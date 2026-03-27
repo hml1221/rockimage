@@ -80,6 +80,15 @@ The script performs Stage 1 global segmentation and prints the number of detecte
 
 ---
 
+## Visualization Test (Extended Example)
+
+In addition to the basic quick test, an extended visualization script is provided:
+
+```bash
+python quick_test_visualization.py
+
+---
+
 ## Model Weights
 
 Due to GitHub file size limitations, the pre-trained model weights are provided via an external download link:

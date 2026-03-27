@@ -79,12 +79,12 @@ class TransformerModel(nn.Module):
             nn.Linear(256, 32),
             nn.ReLU(),
             nn.Linear(32, 4),
-            nn.Softplus(),  # positive parameters
+            nn.Softplus(),
         )
 
     def forward(self, x):
-        features = self.feature_extractor(x)       # [B, C]
-        features = features.unsqueeze(1)           # [B, 1, C]
+        features = self.feature_extractor(x)
+        features = features.unsqueeze(1)
         transformer_output = self.transformer_encoder(features)
         pooled_output = transformer_output.mean(dim=1)
         parameters = self.parameter_generator(pooled_output)
@@ -95,7 +95,6 @@ class TransformerModel(nn.Module):
 # Utility functions
 # =========================
 def delete_small_contours(contours, min_area=200):
-    """Remove contours with very small area."""
     filtered = []
     for contour in contours:
         poly = np.round(contour).astype(int)
@@ -108,7 +107,6 @@ def delete_small_contours(contours, min_area=200):
 
 
 def gaussian_blur_torch(img, kernel_size=3, sigma=1.0):
-    """Gaussian blur for 2D torch tensor."""
     if img.dim() == 2:
         img = img.unsqueeze(0).unsqueeze(0)
     elif img.dim() == 3:
@@ -128,7 +126,6 @@ def gaussian_blur_torch(img, kernel_size=3, sigma=1.0):
 
 
 def torch_gradient(tensor):
-    """Central-difference gradient."""
     if tensor.dim() != 2:
         raise ValueError("Input tensor must be 2D.")
 
@@ -147,11 +144,6 @@ def torch_gradient(tensor):
 
 
 def convert_to_pca_lab(image_bgr):
-    """
-    Stage 1 representation:
-    Convert BGR image to LAB and keep first PCA component.
-    Output range: [0, 1]
-    """
     img_lab = cv2.cvtColor(image_bgr, cv2.COLOR_BGR2Lab)
     h, w, c = img_lab.shape
     data = img_lab.reshape(-1, c).astype(np.float32)
@@ -170,9 +162,6 @@ def convert_to_pca_lab(image_bgr):
 # GLFIF / level-set
 # =========================
 def glfif_update(img, local_img, u0, sigma, lambda1, lambda2, alpha1, alpha2, g):
-    """
-    One update step of GLFIF-based level-set evolution.
-    """
     u1 = u0 ** 2
     u2 = (1 - u0) ** 2
 
@@ -198,9 +187,6 @@ def glfif_update(img, local_img, u0, sigma, lambda1, lambda2, alpha1, alpha2, g)
 
 
 def evolve_level_set(img, initial_lsf, iter_num, sigma, lambda1, lambda2, alpha1, alpha2):
-    """
-    Main GLFIF evolution for Stage 1 global initialization.
-    """
     if img.dim() != 2:
         raise ValueError("Input image must be a 2D grayscale tensor.")
     if img.shape != initial_lsf.shape:
@@ -220,10 +206,6 @@ def evolve_level_set(img, initial_lsf, iter_num, sigma, lambda1, lambda2, alpha1
 
 
 def run_stage1_global_segmentation(img_tensor, parameters, iter_num=20, sigma=0.1):
-    """
-    Stage 1 only:
-    PCA-LAB + parameter prediction + GLFIF global segmentation
-    """
     parameters = parameters.squeeze()
 
     initial_lsf = torch.ones_like(img_tensor) * 0.3
@@ -284,10 +266,12 @@ def build_model(checkpoint_path=None):
 def process_single_image_stage1(image_path, model, visualize=True):
     """
     Process one image with Stage 1 only.
-    Output:
-        - phi_np
-        - contours
-        - contour_count
+
+    Returns:
+        phi_np: level-set result
+        contours: extracted contours
+        contour_count: number of contours
+        parameters_np: predicted Stage 1 parameters
     """
     print(f"\nProcessing image: {os.path.basename(image_path)}")
 
@@ -298,9 +282,7 @@ def process_single_image_stage1(image_path, model, visualize=True):
     image = cv2.resize(image, (INPUT_WIDTH, INPUT_HEIGHT))
     image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
-    # Stage 1 representation: PCA-LAB
     pca_lab_img = convert_to_pca_lab(image)
-
     input_tensor = torch.tensor(pca_lab_img).unsqueeze(0).unsqueeze(0).float().to(device)
 
     with torch.no_grad():
@@ -312,6 +294,7 @@ def process_single_image_stage1(image_path, model, visualize=True):
             sigma=0.1,
         )
 
+    parameters_np = parameters.detach().cpu().numpy().squeeze()
     phi_np = phi.detach().cpu().numpy().squeeze()
 
     contours = measure.find_contours(phi_np, 0.5)
@@ -322,6 +305,7 @@ def process_single_image_stage1(image_path, model, visualize=True):
     contour_count = len(contours)
 
     print(f"Stage 1 global segmentation found {contour_count} contours.")
+    print(f"Predicted parameters: {parameters_np}")
 
     if visualize:
         fig, axes = plt.subplots(1, 3, figsize=(15, 5))
@@ -343,7 +327,7 @@ def process_single_image_stage1(image_path, model, visualize=True):
         plt.tight_layout()
         plt.show()
 
-    return phi_np, contours, contour_count
+    return phi_np, contours, contour_count, parameters_np
 
 
 def save_stage1_result(image_path, model, output_dir="./results_stage1"):
@@ -356,7 +340,7 @@ def save_stage1_result(image_path, model, output_dir="./results_stage1"):
     image = cv2.resize(image, (INPUT_WIDTH, INPUT_HEIGHT))
     image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
-    _, contours, contour_count = process_single_image_stage1(
+    _, contours, contour_count, _ = process_single_image_stage1(
         image_path, model, visualize=False
     )
 
@@ -379,10 +363,6 @@ def save_stage1_result(image_path, model, output_dir="./results_stage1"):
 
 
 def main():
-    """
-    Example for quick local testing.
-    Replace the paths below with your own files.
-    """
     image_path = "data_example/sample.png"
     checkpoint_path = "checkpoints/stage1_model.pth"
 
@@ -393,7 +373,9 @@ def main():
     model = build_model(checkpoint_path=checkpoint_path)
 
     try:
-        process_single_image_stage1(image_path, model, visualize=True)
+        phi_np, contours, contour_count, parameters_np = process_single_image_stage1(
+            image_path, model, visualize=True
+        )
         save_stage1_result(image_path, model, output_dir="./results_stage1")
         print("Stage 1 processing completed successfully.")
     except Exception as e:

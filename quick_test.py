@@ -6,11 +6,11 @@ def main():
 
     model = build_model(checkpoint_path=checkpoint_path)
 
-    phi_np, contours, contour_count = process_single_image_stage1(
-        image_path=image_path,
-        model=model,
-        visualize=False
-    )
+    phi_np, contours, contour_count, parameters_np = process_single_image_stage1(
+    image_path=image_path,
+    model=model,
+    visualize=False
+)
 
     print("Quick test completed successfully.")
     print(f"Contours found: {contour_count}")

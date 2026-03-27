@@ -84,7 +84,7 @@ The script performs Stage 1 global segmentation and prints the number of detecte
 
 Due to GitHub file size limitations, the pre-trained model weights are provided via an external download link:
 
-Quark Cloud:
+Quark Cloud (download link)::
 https://pan.quark.cn/s/b401e9ae3aa8
 
 Downloaded file name:

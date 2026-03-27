@@ -138,8 +138,7 @@ def main():
 
     # 4. run Stage 2 foreground refinement
     # Here we use fixed parameters for visualization/demo.
-    # If you later want stricter consistency, you can modify Stage 1 code to return predicted parameters.
-    parameters = torch.tensor([1.0, 1.0, 1.0, 1.0], device=device)
+    parameters = torch.tensor(parameters_np, dtype=torch.float32, device=device)
 
     contours_fg, foreground_mask, phi_stage2_fg = run_foreground_refinement(
         image_bgr=image_bgr,
